@@ -48,7 +48,7 @@
     "android": {
       "config":{
         "googleMaps":{
-          "apiKey": "AIzaSyCh2ROlAxgd1-HmBoP5erxG7Gt4UI6ccXw"
+          "apiKey": "${{ secrets.API }}"
         }
       },
       "package": "com.blog.test",
