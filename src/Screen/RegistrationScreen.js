@@ -6,6 +6,7 @@ import {
   Text,
   TextInput,
   ToastAndroid,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import IconE from "react-native-vector-icons/Entypo";
@@ -16,8 +17,14 @@ import BgImage from "../img/bg.png";
 import { constant } from "../constant";
 import { useNavigation } from "@react-navigation/native";
 import { ProfileAvatar } from "../components/ProfileAvatar";
+import { sighnUpUser } from "../redux/operations";
+import { useDispatch, useSelector } from "react-redux";
+import { Loader } from "../components/Loader";
 
 export const RegistrationScreen = () => {
+  const isLoading = useSelector(({ user }) => user.isLoading);
+  const { picture } = useSelector(({ user }) => user.userInfo);
+  const dispatch = useDispatch();
   const navigation = useNavigation();
   const { passwordVisibility, rightIcon, handlePasswordVisibility } =
     useTogglePasswordVisibility();
@@ -67,20 +74,21 @@ export const RegistrationScreen = () => {
     });
   };
 
-  const submitHandler = () => {
+  const submitHandler = async () => {
     if (
       !formData.name.trim() ||
       !formData.email.trim() ||
       !formData.password.trim()
     ) {
-      ToastAndroid.show("All fields are required", ToastAndroid.SHORT);
-      return;
+      return ToastAndroid.show("All fields are required", ToastAndroid.SHORT);
     }
     if (constant.regExpEmail.test(formData.email) === false) {
-      ToastAndroid.show("Incorrect email address", ToastAndroid.SHORT);
-      return;
+      return ToastAndroid.show("Incorrect email address", ToastAndroid.SHORT);
     }
-    console.log(formData);
+    const data = { ...formData, picture };
+    const user = await sighnUpUser(data, dispatch);
+    if (!user) return null;
+
     inputName.current.clear();
     inputEmail.current.clear();
     inputPassword.current.clear();
@@ -93,74 +101,77 @@ export const RegistrationScreen = () => {
   };
 
   return (
-    <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
-      <ImageBackground
-        source={BgImage}
-        resizeMode="cover"
-        style={[styles.bgImage, keyboardVisible && { marginBottom: -200 }]}
-      >
-        <View style={styles.box}>
-          <ProfileAvatar />
-          <Text style={styles.text}>Sign Up</Text>
-          <TextInput
-            ref={inputName}
-            style={[styles.input, isFocused.name && styles.inputFocused]}
-            onFocus={() => onFocusHandler("name")}
-            onBlur={() => onBlurHandler("name")}
-            onChangeText={(text) => setFormData({ ...formData, name: text })}
-            placeholder="Username"
-            placeholderTextColor="#BDBDBD"
-          />
-          <TextInput
-            ref={inputEmail}
-            style={[styles.input, isFocused.email && styles.inputFocused]}
-            onFocus={() => onFocusHandler("email")}
-            onBlur={() => onBlurHandler("email")}
-            onChangeText={(text) => {
-              setFormData({ ...formData, email: text });
-            }}
-            keyboardType="email-address"
-            placeholder="Email"
-            placeholderTextColor="#BDBDBD"
-          />
-          <View
-            style={[
-              styles.inputContainer,
-              isFocused.password && styles.inputFocused,
-            ]}
-          >
+    <>
+      {isLoading && <Loader />}
+      <TouchableWithoutFeedback style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+        <ImageBackground
+          source={BgImage}
+          resizeMode="cover"
+          style={[styles.bgImage, keyboardVisible && { marginBottom: -200 }]}
+        >
+          <View style={styles.box}>
+            <ProfileAvatar />
+            <Text style={styles.text}>Sign Up</Text>
             <TextInput
-              ref={inputPassword}
-              style={styles.inputField}
-              onFocus={() => onFocusHandler("password")}
-              onBlur={() => onBlurHandler("password")}
-              onChangeText={(text) =>
-                setFormData({ ...formData, password: text })
-              }
-              name="password"
-              placeholder="Enter password"
+              ref={inputName}
+              style={[styles.input, isFocused.name && styles.inputFocused]}
+              onFocus={() => onFocusHandler("name")}
+              onBlur={() => onBlurHandler("name")}
+              onChangeText={(text) => setFormData({ ...formData, name: text })}
+              placeholder="Username"
               placeholderTextColor="#BDBDBD"
-              textContentType="newPassword"
-              secureTextEntry={passwordVisibility}
-              enablesReturnKeyAutomatically
             />
-            <Pressable onPress={handlePasswordVisibility}>
-              <IconE name={rightIcon} size={25} color="#1B4371" />
-            </Pressable>
-          </View>
-          <CustomButton style={{ marginTop: 45 }} onPress={submitHandler} />
-          <View style={styles.notice}>
-            <Text style={{ color: "#1B4371" }}>Already have an account?</Text>
-            <Text
-              style={{ fontWeight: 700, color: "#1B4371", marginLeft: 3 }}
-              onPress={() => navigation.navigate("Login")}
+            <TextInput
+              ref={inputEmail}
+              style={[styles.input, isFocused.email && styles.inputFocused]}
+              onFocus={() => onFocusHandler("email")}
+              onBlur={() => onBlurHandler("email")}
+              onChangeText={(text) => {
+                setFormData({ ...formData, email: text });
+              }}
+              keyboardType="email-address"
+              placeholder="Email"
+              placeholderTextColor="#BDBDBD"
+            />
+            <View
+              style={[
+                styles.inputContainer,
+                isFocused.password && styles.inputFocused,
+              ]}
             >
-              Login
-            </Text>
+              <TextInput
+                ref={inputPassword}
+                style={styles.inputField}
+                onFocus={() => onFocusHandler("password")}
+                onBlur={() => onBlurHandler("password")}
+                onChangeText={(text) =>
+                  setFormData({ ...formData, password: text })
+                }
+                name="password"
+                placeholder="Enter password"
+                placeholderTextColor="#BDBDBD"
+                textContentType="newPassword"
+                secureTextEntry={passwordVisibility}
+                enablesReturnKeyAutomatically
+              />
+              <Pressable onPress={handlePasswordVisibility}>
+                <IconE name={rightIcon} size={25} color="#1B4371" />
+              </Pressable>
+            </View>
+            <CustomButton style={{ marginTop: 45 }} onPress={submitHandler} />
+            <View style={styles.notice}>
+              <Text style={{ color: "#1B4371" }}>Already have an account?</Text>
+              <Text
+                style={{ fontWeight: 700, color: "#1B4371", marginLeft: 3 }}
+                onPress={() => navigation.navigate("Login")}
+              >
+                Login
+              </Text>
+            </View>
           </View>
-        </View>
-      </ImageBackground>
-    </Pressable>
+        </ImageBackground>
+      </TouchableWithoutFeedback>
+    </>
   );
 };
 

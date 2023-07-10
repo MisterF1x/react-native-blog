@@ -10,15 +10,31 @@ import FontAwesome from "react-native-vector-icons/FontAwesome";
 import EvilIcons from "react-native-vector-icons/EvilIcons";
 import { useNavigation } from "@react-navigation/native";
 import PropTypes from "prop-types";
+import { setLike } from "../redux/operations";
+import { useDispatch } from "react-redux";
+import { updateLikes } from "../redux/authSlice";
 
 export const Post = ({ post, type = null }) => {
+  const dispatch = useDispatch();
   const navigation = useNavigation();
 
   const handleOnPressComment = () => {
     navigation.navigate("Comments", { selectedPostObj: post });
   };
   const handleOnPressLocation = () => {
-    navigation.navigate("Map", { selectedPostObj: post });
+    navigation.navigate("Map", { selectedPostObj: post.coordinates });
+  };
+  const handleSetLike = () => {
+    const data = {
+      likes: {
+        isLiked: !post.likes?.isLiked,
+        like: !post.likes?.isLiked
+          ? post.likes?.like + 1
+          : post.likes?.like - 1,
+      },
+    };
+    setLike(post.postId, data);
+    dispatch(updateLikes({ ...data, postId: post.postId }));
   };
   return (
     <View style={{ marginBottom: 32 }}>
@@ -38,9 +54,9 @@ export const Post = ({ post, type = null }) => {
           <View style={[styles.rowVerticalCenter, { marginRight: 24 }]}>
             <Pressable onPress={handleOnPressComment}>
               <FontAwesome
-                name={post.comments.length > 0 ? "comment" : "comment-o"}
+                name={post.comments > 0 ? "comment" : "comment-o"}
                 size={25}
-                color={post.comments.length > 0 ? "#FF6C00" : "#BDBDBD"}
+                color={post.comments > 0 ? "#FF6C00" : "#BDBDBD"}
                 style={{ height: 25, marginRight: 6 }}
               />
             </Pressable>
@@ -51,28 +67,28 @@ export const Post = ({ post, type = null }) => {
                 color: "#212121",
               }}
             >
-              {post.comments.length}
+              {post.comments}
             </Text>
           </View>
-          {!!type && (
-            <View style={styles.rowVerticalCenter}>
+          <View style={styles.rowVerticalCenter}>
+            <Pressable onPress={handleSetLike}>
               <Icon
-                name="like2"
+                name={post.likes?.isLiked ? "like1" : "like2"}
                 size={25}
                 color="#FF6C00"
                 style={{ height: 25, marginRight: 6 }}
               />
-              <Text
-                style={{
-                  fontSize: 16,
-                  lineHeight: 19,
-                  color: "#212121",
-                }}
-              >
-                {post.likes}
-              </Text>
-            </View>
-          )}
+            </Pressable>
+            <Text
+              style={{
+                fontSize: 16,
+                lineHeight: 19,
+                color: "#212121",
+              }}
+            >
+              {post.likes?.like}
+            </Text>
+          </View>
         </View>
         <View style={styles.rowVerticalCenter}>
           <Pressable onPress={handleOnPressLocation}>

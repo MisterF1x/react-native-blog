@@ -8,32 +8,81 @@ import {
   ScrollView,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import AntDesign from "react-native-vector-icons/AntDesign";
 import { Comment } from "../components/Comment";
 import { NoComment } from "../components/NoComment";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { Skeleton } from "../components/Skeleton";
+import {
+  addCommentToStorage,
+  initComments,
+  updateCommentCount,
+} from "../redux/operations";
+import { useDispatch, useSelector } from "react-redux";
+import { updateComments } from "../redux/authSlice";
 
 export const CommentsScreen = ({ route }) => {
+  const dispatch = useDispatch();
+  const { userInfo } = useSelector(({ user }) => user);
   const { selectedPostObj } = route.params;
   const input = useRef();
-  const [comment, setComment] = useState("");
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
+  useEffect(() => {
+    (async function () {
+      try {
+        setRefreshing(true);
+        const data = await initComments(selectedPostObj.postId);
+        setComments(data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setRefreshing(false);
+      }
+    })();
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      setComments([]);
+      const data = await initComments(selectedPostObj.postId);
+      setComments(data);
+    } catch (error) {
+      Alert.alert("Ooops something went wrong!");
+      console.log(error);
+    } finally {
       setRefreshing(false);
-      Alert.alert("Comment screen is refreshed!!!");
-    }, 2000);
+    }
   }, []);
 
   const onPressHandler = () => {
-    input.current.clear();
-    Keyboard.dismiss();
-    console.log(comment);
+    const date = new Date(Date.now());
+    const data = {
+      createdAt: date.toISOString(),
+      text: commentText,
+      userId: userInfo.userId,
+      userPicture: userInfo.picture,
+    };
+    try {
+      setIsLoading(true);
+      addCommentToStorage(selectedPostObj.postId, data);
+      updateCommentCount(selectedPostObj.postId, selectedPostObj.comments);
+      setComments([...comments, data]);
+      dispatch(updateComments(selectedPostObj.postId));
+      input.current.clear();
+      Keyboard.dismiss();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -71,8 +120,8 @@ export const CommentsScreen = ({ route }) => {
                 style={styles.imgBackground}
               />
             </View>
-            {selectedPostObj.comments.length ? (
-              selectedPostObj.comments.map((comment, inx) => (
+            {comments.length ? (
+              comments.map((comment, inx) => (
                 <Comment key={inx + "-C"} comment={comment} />
               ))
             ) : (
@@ -85,13 +134,21 @@ export const CommentsScreen = ({ route }) => {
         <TextInput
           ref={input}
           style={styles.inputField}
-          onChangeText={(text) => setComment(text)}
+          onChangeText={(text) => setCommentText(text)}
           name="comment"
           placeholder="Add a comment..."
           placeholderTextColor="#BDBDBD"
         />
-        <Pressable style={styles.btn} onPress={onPressHandler}>
-          <AntDesign name="arrowup" size={25} color="#FFF" />
+        <Pressable
+          style={styles.btn}
+          onPress={onPressHandler}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#d3d3d3" />
+          ) : (
+            <AntDesign name="arrowup" size={25} color="#FFF" />
+          )}
         </Pressable>
       </View>
     </View>

@@ -1,32 +1,33 @@
 import { format, parseISO } from "date-fns";
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
-import { user } from "../userInfo";
 import PropTypes from "prop-types";
+import { useSelector } from "react-redux";
 
 export const Comment = ({ comment }) => {
+  const { userId } = useSelector(({ user }) => user.userInfo);
   const parsedDate = parseISO(comment.createdAt);
   const date = format(parsedDate, "dd MMMM yyyy | HH:mm");
   return (
     <View
       style={{
-        flexDirection: comment.userId === "me" ? "row-reverse" : "row",
+        flexDirection: comment.userId === userId ? "row-reverse" : "row",
         marginBottom: 24,
       }}
     >
       <View
         style={[
           styles.userContainer,
-          comment.userId === "me" ? { marginLeft: 16 } : { marginRight: 16 },
+          comment.userId === userId
+            ? { marginLeft: 16, backgroundColor: "#FF6C00" }
+            : { marginRight: 16, backgroundColor: "#BDBDBD" },
         ]}
       >
-        {comment.userId === "me" ? (
-          <ImageBackground
-            source={{
-              uri: user.picture,
-            }}
-            style={styles.userImgBackground}
-          />
-        ) : null}
+        <ImageBackground
+          source={{
+            uri: comment.userPicture,
+          }}
+          style={styles.userImgBackground}
+        />
       </View>
       <View style={styles.commentContainer}>
         <Text style={styles.comment}>{comment.text}</Text>
@@ -40,7 +41,6 @@ const styles = StyleSheet.create({
   userContainer: {
     width: 28,
     height: 28,
-    backgroundColor: "#BDBDBD",
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -76,5 +76,6 @@ Comment.propTypes = {
     createdAt: PropTypes.string.isRequired,
     userId: PropTypes.string.isRequired,
     text: PropTypes.string.isRequired,
+    userPicture: PropTypes.string.isRequired,
   }),
 };

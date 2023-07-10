@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Alert,
   ImageBackground,
@@ -8,16 +7,20 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/AntDesign";
 import * as ImagePicker from "expo-image-picker";
+import { useDispatch, useSelector } from "react-redux";
+import { setUserImg } from "../redux/authSlice";
+import { uploadImage } from "../helpers/uploadFile";
+import { deleteFileFromStorage } from "../helpers/deleteFileFromStorage";
+import { auth } from "../firebase/config";
+import { updateProfile } from "firebase/auth";
 
 export const ProfileAvatar = () => {
+  const { picture } = useSelector(({ user }) => user.userInfo);
+  const { userId } = useSelector(({ user }) => user.userInfo);
+  const dispatch = useDispatch();
   const [statusMedia, requestPermissionMedia] =
     ImagePicker.useMediaLibraryPermissions();
-  const [userImg, setUserImg] = useState("");
 
-  // console.log(onPress);
-  // const onPressHandler = () => {
-  //   openBottomSheet();
-  // };
   const verifyPermission = async () => {
     if (
       statusMedia.status === "undetermined" ||
@@ -36,11 +39,10 @@ export const ProfileAvatar = () => {
     }
     return true;
   };
+
   const pickImage = async () => {
     const hasPermission = await verifyPermission();
-    if (!hasPermission) {
-      return;
-    }
+    if (!hasPermission) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       aspect: [4, 3],
@@ -48,28 +50,44 @@ export const ProfileAvatar = () => {
     });
 
     if (!result.canceled) {
-      setUserImg(result.assets[0].uri);
+      const url = await uploadImage(
+        result.assets[0].uri,
+        Date.now(),
+        "usersAvatar"
+      );
+      dispatch(setUserImg(url));
+      if (!!userId) {
+        await updateProfile(auth.currentUser, { photoURL: url });
+      }
     }
   };
+
+  const deleteUserPicture = async () => {
+    if (picture) {
+      await deleteFileFromStorage(picture);
+      dispatch(setUserImg(null));
+    }
+  };
+
   return (
     <>
       <View style={styles.userImgContainer}>
         <View style={styles.picture}>
-          {userImg && (
+          {picture && (
             <ImageBackground
               source={{
-                uri: userImg,
+                uri: picture,
               }}
               style={styles.userImgBackground}
             />
           )}
         </View>
-        {userImg ? (
+        {picture ? (
           <Pressable
-            onPress={() => setUserImg("")}
+            onPress={deleteUserPicture}
             style={[
               styles.iconBtn,
-              userImg && { backgroundColor: "#fff", borderRadius: 12 },
+              picture && { backgroundColor: "#fff", borderRadius: 12 },
             ]}
           >
             <Icon name={"closecircleo"} size={25} color={"#BDBDBD"} />
@@ -79,7 +97,7 @@ export const ProfileAvatar = () => {
             onPress={pickImage}
             style={[
               styles.iconBtn,
-              userImg && { backgroundColor: "#fff", borderRadius: 12 },
+              picture && { backgroundColor: "#fff", borderRadius: 12 },
             ]}
           >
             <Icon name={"pluscircleo"} size={25} color={"#FF6C00"} />

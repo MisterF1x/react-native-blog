@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import EvilIcons from "react-native-vector-icons/EvilIcons";
@@ -17,19 +18,24 @@ import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Location from "expo-location";
+import { useDispatch, useSelector } from "react-redux";
+import { uploadImage } from "../helpers/uploadFile";
+import { addPostToStorage } from "../redux/operations";
+import { addPost, addUserPost } from "../redux/authSlice";
 
 export const CreatePostsScreen = () => {
+  const dispatch = useDispatch();
+  const { userId } = useSelector(({ user }) => user.userInfo);
+
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const [isLoading, setIsLoading] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [postData, setPostData] = useState({
-    image: "",
-    title: "",
-    location: "",
-    coordinates: "",
-  });
+  const [postImg, setPostImg] = useState(null);
+  const [postTitle, setPostTitle] = useState(null);
+  const [postRegion, setPostRegion] = useState(null);
+
   const cameraRef = useRef(null);
   const inputTitle = useRef();
   const inputLocation = useRef();
@@ -83,34 +89,55 @@ export const CreatePostsScreen = () => {
   const clearPostForm = () => {
     inputTitle.current.clear();
     inputLocation.current.clear();
-    setPostData({ ...postData, image: "", title: "", location: "" });
+    setPostImg(null);
+    setPostTitle(null);
+    setPostRegion(null);
   };
+
   const getLocation = async () => {
     try {
-      setIsLoading(true);
       const { coords } = await Location.getCurrentPositionAsync({});
-      const data = {
+      return {
         lat: coords.latitude,
         long: coords.longitude,
       };
-      console.log(data);
-      setPostData({ ...postData, coordinates: { ...data } });
-      console.log("Post data send...", {
-        ...postData,
-        coordinates: { ...data },
-      });
     } catch (error) {
       console.warn(error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const onPressPublish = async () => {
-    await getLocation();
-    // console.log("Post data send...", postData);
-    clearPostForm();
-    navigation.navigate("Posts");
+    const date = new Date(Date.now());
+    try {
+      setIsLoading(true);
+      const { lat, long } = await getLocation();
+      const region = await Location.reverseGeocodeAsync({
+        latitude: lat,
+        longitude: long,
+      });
+      const url = await uploadImage(postImg, Date.now(), "postsPicture");
+      const data = {
+        userId,
+        picture: url,
+        title: postTitle,
+        location: { region: postRegion, country: region[0].country },
+        coordinates: { lat, long },
+        comments: 0,
+        likes: { isLiked: false, like: 0 },
+        createdAt: date.toISOString(),
+      };
+
+      await addPostToStorage(data);
+      dispatch(addPost(data));
+      dispatch(addUserPost(data));
+      clearPostForm();
+      navigation.navigate("Posts");
+    } catch (error) {
+      Alert.alert("Oops something went wrong!");
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDeletePost = () => {
@@ -120,112 +147,102 @@ export const CreatePostsScreen = () => {
   const takePicture = async () => {
     if (cameraRef) {
       try {
-        const img = await cameraRef.current.takePictureAsync();
-        setPostData({ ...postData, image: img.uri });
+        const { uri } = await cameraRef.current.takePictureAsync();
+        setPostImg(uri);
       } catch (error) {
         console.error(error);
         Alert.alert("No access to camera");
       }
     }
   };
+
   return (
     <View style={styles.container}>
-      <Pressable
-        style={{ flex: 1, justifyContent: "space-between" }}
-        onPress={Keyboard.dismiss}
-      >
-        <View style={{ marginTop: 32 }}>
-          <KeyboardAvoidingView
-            keyboardVerticalOffset={120}
-            behavior={Platform.OS == "ios" ? "padding" : "height"}
-            style={{
-              justifyContent: "flex-end",
-              // paddingBottom:
-              //   keyboardVisible && Platform.OS == "android" ? 24 : 0,
-            }}
-          >
-            <View style={styles.imgContainer}>
-              {isFocused && hasCameraPermission && !postData.image ? (
-                <Camera
-                  ref={cameraRef}
-                  style={styles.camera}
-                  type={Camera.Constants.Type.back}
-                  ratio="1:1"
-                />
-              ) : (
-                postData.image && (
-                  <ImageBackground
-                    source={{
-                      uri: postData.image,
-                    }}
-                    style={styles.imgBackground}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1, justifyContent: "space-between" }}>
+          <View style={{ marginTop: 32 }}>
+            <KeyboardAvoidingView
+              keyboardVerticalOffset={120}
+              behavior={Platform.OS == "ios" ? "padding" : "height"}
+              style={{
+                justifyContent: "flex-end",
+              }}
+            >
+              <View style={styles.imgContainer}>
+                {isFocused && hasCameraPermission && !postImg ? (
+                  <Camera
+                    ref={cameraRef}
+                    style={styles.camera}
+                    type={Camera.Constants.Type.back}
+                    ratio="1:1"
                   />
-                )
-              )}
-              {!postData.image && (
-                <Pressable onPress={takePicture} style={styles.cameraBtn}>
-                  <FontAwesome name="camera" size={25} color="#BDBDBD" />
-                </Pressable>
-              )}
-            </View>
-            <Text style={styles.textTitle}>
-              {true ? "Upload your picture" : "Edit picture"}
-            </Text>
-            <View style={styles.formContainer}>
-              <TextInput
-                style={styles.inputField}
-                onChangeText={(text) =>
-                  setPostData({ ...postData, title: text })
-                }
-                ref={inputTitle}
-                name="title"
-                placeholder="Enter title..."
-                placeholderTextColor="#BDBDBD"
-                enablesReturnKeyAutomatically
-              />
-              <View style={styles.inputIcon}>
-                <EvilIcons
-                  name="location"
-                  size={25}
-                  color="#BDBDBD"
-                  style={{ height: 25 }}
-                />
+                ) : (
+                  postImg && (
+                    <ImageBackground
+                      source={{
+                        uri: postImg,
+                      }}
+                      style={styles.imgBackground}
+                    />
+                  )
+                )}
+                {!postImg && (
+                  <Pressable onPress={takePicture} style={styles.cameraBtn}>
+                    <FontAwesome name="camera" size={25} color="#BDBDBD" />
+                  </Pressable>
+                )}
+              </View>
+              <Text style={styles.textTitle}>
+                {true ? "Upload your picture" : "Edit picture"}
+              </Text>
+              <View style={styles.formContainer}>
                 <TextInput
-                  style={{ flex: 1 }}
-                  onChangeText={(text) =>
-                    setPostData({ ...postData, location: text })
-                  }
-                  ref={inputLocation}
-                  name="location"
-                  placeholder="Location..."
+                  style={styles.inputField}
+                  onChangeText={(text) => setPostTitle(text)}
+                  ref={inputTitle}
+                  name="title"
+                  placeholder="Enter title..."
                   placeholderTextColor="#BDBDBD"
                   enablesReturnKeyAutomatically
                 />
+                <View style={styles.inputIcon}>
+                  <EvilIcons
+                    name="location"
+                    size={25}
+                    color="#BDBDBD"
+                    style={{ height: 25 }}
+                  />
+                  <TextInput
+                    style={{ flex: 1 }}
+                    onChangeText={(text) => setPostRegion(text)}
+                    ref={inputLocation}
+                    name="location"
+                    placeholder="Location..."
+                    placeholderTextColor="#BDBDBD"
+                    enablesReturnKeyAutomatically
+                  />
+                </View>
+                <CustomButton
+                  style={{ marginTop: 45 }}
+                  onPress={onPressPublish}
+                  title={isLoading ? "Publishing..." : "Publish"}
+                  disabled={
+                    !(!!postImg && !!postTitle && !!postRegion) || isLoading
+                  }
+                />
               </View>
-              <CustomButton
-                style={{ marginTop: 45 }}
-                onPress={onPressPublish}
-                title={isLoading ? "Publishing..." : "Publish"}
-                disabled={
-                  !(
-                    !!postData.image &&
-                    !!postData.title &&
-                    !!postData.location
-                  ) || isLoading
-                }
-              />
-            </View>
-          </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </View>
+          <Pressable onPress={handleDeletePost} style={styles.trashBtn}>
+            <EvilIcons
+              name="trash"
+              size={25}
+              color="#BDBDBD"
+              style={{ height: 25 }}
+            />
+          </Pressable>
         </View>
-        <Pressable onPress={handleDeletePost} style={styles.trashBtn}>
-          <EvilIcons
-            name="trash"
-            size={25}
-            color="#BDBDBD"
-            style={{ height: 25 }}
-          />
-        </Pressable>
-      </Pressable>
+      </TouchableWithoutFeedback>
     </View>
   );
 };

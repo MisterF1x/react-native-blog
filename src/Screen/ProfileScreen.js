@@ -10,26 +10,37 @@ import {
 } from "react-native";
 import IconIonic from "react-native-vector-icons/Ionicons";
 import BgImage from "../img/bg.png";
-import { data } from "../data";
 import { useNavigation } from "@react-navigation/native";
 import { Post } from "../components/Post";
 import { ProfileAvatar } from "../components/ProfileAvatar";
-import { user } from "../userInfo";
 import { useCallback, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
+import { useDispatch, useSelector } from "react-redux";
+import { LogOut, initUserPosts } from "../redux/operations";
+import { resetUserPosts } from "../redux/authSlice";
 
 export const ProfileScreen = () => {
+  const dispatch = useDispatch();
+  const { userInfo } = useSelector((state) => state.user);
+  const { userPosts } = useSelector(({ user }) => user);
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      dispatch(resetUserPosts());
+      await initUserPosts(dispatch, userInfo.userId);
+    } catch (error) {
+      Alert.alert("Oops something went wrong!");
+      console.log(error);
+    } finally {
       setRefreshing(false);
-      Alert.alert("Page is refreshed!!!");
-    }, 2000);
+    }
   }, []);
-  const handleLogout = () => {
+
+  const handleLogout = async () => {
+    await LogOut(dispatch);
     navigation.navigate("Login");
   };
 
@@ -41,7 +52,7 @@ export const ProfileScreen = () => {
           <Pressable style={styles.btnLogout} onPress={handleLogout}>
             <IconIonic name="exit-outline" size={25} color="#BDBDBD" />
           </Pressable>
-          <Text style={styles.text}>{user.name}</Text>
+          <Text style={styles.text}>{userInfo.name}</Text>
           {refreshing ? (
             <View style={{ flex: 1, backgroundColor: "white" }}>
               <View style={{ marginBottom: 30 }}>
@@ -65,9 +76,15 @@ export const ProfileScreen = () => {
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
               }
             >
-              {data.map((post, inx) => {
-                return <Post key={inx + "-F"} post={post} type="Profile" />;
-              })}
+              {userPosts.length ? (
+                userPosts.map((post) => {
+                  return <Post key={post.postId} post={post} type="Profile" />;
+                })
+              ) : (
+                <Text style={styles.notifyText}>
+                  You haven't created any post yet.
+                </Text>
+              )}
             </ScrollView>
           )}
         </View>
@@ -93,30 +110,12 @@ const styles = StyleSheet.create({
     fontWeight: 500,
     textAlign: "center",
   },
-  // userImgContainer: {
-  //   backgroundColor: "#F6F6F6",
-  //   borderRadius: 16,
-  //   height: 120,
-  //   width: 120,
-  //   alignSelf: "center",
-  //   marginTop: -60,
-  // },
-  // picture: {
-  //   flex: 1,
-  //   borderRadius: 16,
-  //   overflow: "hidden",
-  // },
-  // iconBtn: {
-  //   position: "absolute",
-  //   bottom: 14,
-  //   right: -12,
-  // },
-  // userImgBackground: {
-  //   flex: 1,
-  //   resizeMode: "cover",
-  //   width: "100%",
-  //   alignItems: "center",
-  // },
+  notifyText: {
+    fontSize: 22,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    color: "#BDBDBD",
+  },
   image: {
     flex: 1,
     justifyContent: "flex-end",

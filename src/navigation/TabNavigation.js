@@ -6,14 +6,19 @@ import { Pressable, View } from "react-native";
 import IconIonic from "react-native-vector-icons/Ionicons";
 import Icon from "react-native-vector-icons/AntDesign";
 import { useNavigation } from "@react-navigation/native";
+import { useDispatch } from "react-redux";
+import { LogOut } from "../redux/operations";
 
 const Tabs = createBottomTabNavigator();
 
 export const TabNavigation = () => {
+  const dispatch = useDispatch();
   const navigation = useNavigation();
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await LogOut(dispatch);
     navigation.navigate("Login");
   };
+
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
@@ -33,18 +38,22 @@ export const TabNavigation = () => {
           }
           return (
             <View
-              style={{
-                height: 40,
-                backgroundColor: focused ? "#FF6C00" : null,
-                paddingVertical: 8,
-                paddingHorizontal: 23,
-                borderRadius: 20,
-              }}
+              style={
+                route.name === "CreatePost" && {
+                  height: 40,
+                  backgroundColor: "#FF6C00",
+                  paddingVertical: 8,
+                  paddingHorizontal: 23,
+                  borderRadius: 20,
+                }
+              }
             >
               <Icon
                 name={iconName}
                 size={size}
-                color={focused ? "#fff" : "#212121"}
+                color={
+                  route.name === "CreatePost" ? "#fff" : focused && "#FF6C00"
+                }
               />
             </View>
           );

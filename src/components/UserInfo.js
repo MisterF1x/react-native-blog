@@ -1,22 +1,23 @@
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
-import { user } from "../userInfo";
+import { useSelector } from "react-redux";
 
 export const UserInfo = () => {
+  const { userInfo } = useSelector((state) => state.user);
   return (
     <View style={styles.userContainer}>
       <View style={styles.userPicture}>
-        {user.picture ? (
+        {userInfo.picture ? (
           <ImageBackground
             source={{
-              uri: user.picture,
+              uri: userInfo.picture,
             }}
             style={styles.ImageBackground}
           />
         ) : null}
       </View>
       <View style={styles.userInfoContainer}>
-        <Text style={styles.userName}>{user.name}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
+        <Text style={styles.userName}>{userInfo.name}</Text>
+        <Text style={styles.userEmail}>{userInfo.email}</Text>
       </View>
     </View>
   );

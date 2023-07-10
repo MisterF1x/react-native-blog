@@ -1,30 +1,36 @@
-import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { StyleSheet, View, FlatList } from "react-native";
 import { UserInfo } from "../components/UserInfo";
-import { data } from "../data";
 import { Post } from "../components/Post";
 import { useCallback, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
+import { useDispatch, useSelector } from "react-redux";
+import { initPosts } from "../redux/operations";
+import { resetPosts } from "../redux/authSlice";
 
 export const PostsScreen = () => {
+  const dispatch = useDispatch();
+  const { posts } = useSelector(({ user }) => user);
+  const { userInfo } = useSelector(({ user }) => user);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => {
+  const onRefresh = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      dispatch(resetPosts());
+      await initPosts(dispatch, userInfo.userId);
+    } catch (error) {
+      console.log(error);
+    } finally {
       setRefreshing(false);
-      Alert.alert("Page is refreshed!!!");
-    }, 2000);
+    }
   }, []);
+
   if (refreshing) {
     return (
       <View style={{ flex: 1, backgroundColor: "white", padding: 16 }}>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginTop: 16 }}
+        >
           <Skeleton style={{ width: 60, height: 60 }} />
           <View style={{ marginLeft: 10 }}>
             <Skeleton style={{ width: 110, height: 12, marginBottom: 8 }} />
@@ -45,19 +51,21 @@ export const PostsScreen = () => {
     );
   }
   return (
-    <ScrollView
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      style={styles.scrollBox}
-    >
+    <View style={styles.scrollBox}>
       <UserInfo />
-      {data.map((post, inx) => {
-        return <Post key={inx + "-p"} post={post} />;
-      })}
-    </ScrollView>
+      <FlatList
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={250}
+        data={posts}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        keyExtractor={(post) => post.postId}
+        renderItem={({ item }) => <Post post={item} />}
+      />
+    </View>
   );
 };
+
 const styles = StyleSheet.create({
   scrollBox: {
     flex: 1,
@@ -66,5 +74,12 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     marginVertical: 8,
+  },
+  text: {
+    fontSize: 22,
+    fontWeight: 700,
+    textTransform: "uppercase",
+    color: "#BDBDBD",
+    textAlign: "center",
   },
 });
