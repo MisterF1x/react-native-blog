@@ -13,27 +13,67 @@ import BgImage from "../img/bg.png";
 import { useNavigation } from "@react-navigation/native";
 import { Post } from "../components/Post";
 import { ProfileAvatar } from "../components/ProfileAvatar";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
 import { useDispatch, useSelector } from "react-redux";
-import { LogOut, initUserPosts } from "../redux/operations";
-import { resetUserPosts } from "../redux/authSlice";
+import { LogOut } from "../redux/operations";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import { db } from "../firebase/config";
 
 export const ProfileScreen = () => {
   const dispatch = useDispatch();
   const { userInfo } = useSelector((state) => state.user);
-  const { userPosts } = useSelector(({ user }) => user);
+
   const navigation = useNavigation();
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
+  const [userPosts, setUserPosts] = useState([]);
+
+  useEffect(() => {
+    const ref = query(
+      collection(db, "posts"),
+      orderBy("createdAt", "desc"),
+      where("userId", "==", userInfo.userId)
+    );
+    const subscribe = onSnapshot(ref, (querySnapshot) => {
+      setUserPosts([]);
+      querySnapshot.forEach((doc) => {
+        setUserPosts((state) => [...state, { postId: doc.id, ...doc.data() }]);
+      });
+      setRefreshing(false);
+    });
+    return () => {
+      subscribe();
+    };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      dispatch(resetUserPosts());
-      await initUserPosts(dispatch, userInfo.userId);
+      setUserPosts([]);
+
+      const ref = query(
+        collection(db, "posts"),
+        orderBy("createdAt", "desc"),
+        where("userId", "==", userInfo.userId)
+      );
+      const docSnap = await getDocs(ref);
+      docSnap.forEach((doc) => {
+        if (doc.exists()) {
+          setUserPosts((state) => [
+            ...state,
+            { postId: doc.id, ...doc.data() },
+          ]);
+        }
+      });
     } catch (error) {
       Alert.alert("Oops something went wrong!");
-      console.log(error);
     } finally {
       setRefreshing(false);
     }

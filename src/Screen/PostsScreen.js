@@ -1,23 +1,49 @@
 import { StyleSheet, View, FlatList } from "react-native";
 import { UserInfo } from "../components/UserInfo";
 import { Post } from "../components/Post";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
-import { useDispatch, useSelector } from "react-redux";
-import { initPosts } from "../redux/operations";
-import { resetPosts } from "../redux/authSlice";
+
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { db } from "../firebase/config";
 
 export const PostsScreen = () => {
-  const dispatch = useDispatch();
-  const { posts } = useSelector(({ user }) => user);
-  const { userInfo } = useSelector(({ user }) => user);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    const ref = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const subscribe = onSnapshot(ref, (querySnapshot) => {
+      setPosts([]);
+      querySnapshot.forEach((doc) => {
+        setPosts((state) => [...state, { postId: doc.id, ...doc.data() }]);
+      });
+      setRefreshing(false);
+    });
+
+    return () => {
+      subscribe();
+    };
+  }, []);
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
-      dispatch(resetPosts());
-      await initPosts(dispatch, userInfo.userId);
+      setPosts([]);
+
+      const ref = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+      const docSnap = await getDocs(ref);
+      docSnap.forEach((doc) => {
+        if (doc.exists()) {
+          setPosts((state) => [...state, { postId: doc.id, ...doc.data() }]);
+        }
+      });
     } catch (error) {
       console.log(error);
     } finally {

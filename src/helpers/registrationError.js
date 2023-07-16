@@ -33,6 +33,7 @@ export const showRegError = (error) => {
       );
       break;
     default:
+      console.log(error);
       ToastAndroid.show(error.message, ToastAndroid.SHORT);
       break;
   }

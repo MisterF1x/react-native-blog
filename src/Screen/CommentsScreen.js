@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
+  ToastAndroid,
 } from "react-native";
 import AntDesign from "react-native-vector-icons/AntDesign";
 import { Comment } from "../components/Comment";
@@ -18,42 +19,72 @@ import PropTypes from "prop-types";
 import { Skeleton } from "../components/Skeleton";
 import {
   addCommentToStorage,
-  initComments,
-  updateCommentCount,
+  incrementCommentCount,
 } from "../redux/operations";
-import { useDispatch, useSelector } from "react-redux";
-import { updateComments } from "../redux/authSlice";
+import { useSelector } from "react-redux";
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+} from "firebase/firestore";
+import { db } from "../firebase/config";
 
 export const CommentsScreen = ({ route }) => {
-  const dispatch = useDispatch();
   const { userInfo } = useSelector(({ user }) => user);
+
   const { selectedPostObj } = route.params;
   const input = useRef();
+
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    (async function () {
-      try {
-        setRefreshing(true);
-        const data = await initComments(selectedPostObj.postId);
-        setComments(data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setRefreshing(false);
-      }
-    })();
+    const ref = query(
+      collection(db, `posts/${selectedPostObj.postId}/comments`),
+      orderBy("createdAt", "desc")
+    );
+    const subscribe = onSnapshot(ref, (querySnapshot) => {
+      setComments([]);
+      querySnapshot.forEach((doc) => {
+        setComments((state) => [
+          ...state,
+          {
+            commentId: doc.id,
+            postId: selectedPostObj.postId,
+            ...doc.data(),
+          },
+        ]);
+      });
+    });
+
+    setRefreshing(false);
+
+    return () => {
+      subscribe();
+    };
   }, []);
 
   const onRefresh = useCallback(async () => {
     try {
       setRefreshing(true);
       setComments([]);
-      const data = await initComments(selectedPostObj.postId);
-      setComments(data);
+      const ref = query(
+        collection(db, `posts/${selectedPostObj.postId}/comments`),
+        orderBy("createdAt", "desc")
+      );
+      const docSnap = await getDocs(ref);
+      docSnap.forEach((doc) => {
+        if (doc.exists()) {
+          setComments((state) => [
+            ...state,
+            { commentId: doc.id, ...doc.data() },
+          ]);
+        }
+      });
     } catch (error) {
       Alert.alert("Ooops something went wrong!");
       console.log(error);
@@ -63,19 +94,25 @@ export const CommentsScreen = ({ route }) => {
   }, []);
 
   const onPressHandler = () => {
+    if (!commentText.trim()) {
+      ToastAndroid.show(
+        "Please write something about this place.",
+        ToastAndroid.SHORT
+      );
+      return;
+    }
     const date = new Date(Date.now());
     const data = {
       createdAt: date.toISOString(),
       text: commentText,
       userId: userInfo.userId,
-      userPicture: userInfo.picture,
+      userPicture: userInfo.picture || null,
     };
     try {
       setIsLoading(true);
       addCommentToStorage(selectedPostObj.postId, data);
-      updateCommentCount(selectedPostObj.postId, selectedPostObj.comments);
+      incrementCommentCount(selectedPostObj.postId);
       setComments([...comments, data]);
-      dispatch(updateComments(selectedPostObj.postId));
       input.current.clear();
       Keyboard.dismiss();
     } catch (error) {

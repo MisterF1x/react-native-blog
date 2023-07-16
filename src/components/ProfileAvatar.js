@@ -13,11 +13,14 @@ import { uploadImage } from "../helpers/uploadFile";
 import { deleteFileFromStorage } from "../helpers/deleteFileFromStorage";
 import { auth } from "../firebase/config";
 import { updateProfile } from "firebase/auth";
+import { updateUrlInSubcollections } from "../redux/operations";
 
 export const ProfileAvatar = () => {
   const { picture } = useSelector(({ user }) => user.userInfo);
   const { userId } = useSelector(({ user }) => user.userInfo);
+
   const dispatch = useDispatch();
+
   const [statusMedia, requestPermissionMedia] =
     ImagePicker.useMediaLibraryPermissions();
 
@@ -58,6 +61,7 @@ export const ProfileAvatar = () => {
       dispatch(setUserImg(url));
       if (!!userId) {
         await updateProfile(auth.currentUser, { photoURL: url });
+        await updateUrlInSubcollections(userId, url);
       }
     }
   };

@@ -18,13 +18,12 @@ import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Camera } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import * as Location from "expo-location";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { uploadImage } from "../helpers/uploadFile";
 import { addPostToStorage } from "../redux/operations";
-import { addPost, addUserPost } from "../redux/authSlice";
+import { Loader } from "../components/Loader";
 
 export const CreatePostsScreen = () => {
-  const dispatch = useDispatch();
   const { userId } = useSelector(({ user }) => user.userInfo);
 
   const navigation = useNavigation();
@@ -123,13 +122,10 @@ export const CreatePostsScreen = () => {
         location: { region: postRegion, country: region[0].country },
         coordinates: { lat, long },
         comments: 0,
-        likes: { isLiked: false, like: 0 },
+        likes: [],
         createdAt: date.toISOString(),
       };
-
       await addPostToStorage(data);
-      dispatch(addPost(data));
-      dispatch(addUserPost(data));
       clearPostForm();
       navigation.navigate("Posts");
     } catch (error) {
@@ -158,6 +154,7 @@ export const CreatePostsScreen = () => {
 
   return (
     <View style={styles.container}>
+      {isLoading && <Loader />}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1, justifyContent: "space-between" }}>
           <View style={{ marginTop: 32 }}>

@@ -21,14 +21,17 @@ import { Loader } from "../components/Loader";
 import { LogIn } from "../redux/operations";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
+import { signUp } from "../redux/authSlice";
 
 export const LoginScreen = () => {
   const dispatch = useDispatch();
   const isLoading = useSelector(({ user }) => user.isLoading);
 
   const navigation = useNavigation();
+
   const { passwordVisibility, rightIcon, handlePasswordVisibility } =
     useTogglePasswordVisibility();
+
   const [isFocused, setIsFocused] = useState({
     email: false,
     password: false,
@@ -38,12 +41,21 @@ export const LoginScreen = () => {
     email: "",
     password: "",
   });
+
   const inputEmail = useRef();
   const inputPassword = useRef();
 
   useEffect(() => {
     const subscriber = onAuthStateChanged(auth, (user) => {
       if (user) {
+        dispatch(
+          signUp({
+            userId: user.uid,
+            name: user.displayName,
+            email: user.email,
+            picture: user.photoURL,
+          })
+        );
         navigation.navigate("Home");
       }
     });
