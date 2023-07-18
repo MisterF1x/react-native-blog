@@ -1,19 +1,16 @@
 import Icon from "react-native-vector-icons/Ionicons";
 import PropTypes from "prop-types";
-import {
-  Pressable,
-  Modal,
-  StyleSheet,
-  Text,
-  View,
-  StatusBar,
-} from "react-native";
+import { Pressable, Modal, StyleSheet, Text, View } from "react-native";
 
 export const BottomModal = ({ onClose, select, deletePost }) => {
   return (
     <>
-      <StatusBar />
-      <Modal animationType="fade" transparent={true} visible={select}>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={select}
+        statusBarTranslucent={true}
+      >
         <View style={styles.centeredView}>
           <View style={styles.modalView}>
             <Pressable

@@ -11,7 +11,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-     "plugins": [
+    "plugins": [
       [
         "expo-media-library",
         {
@@ -43,22 +43,39 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow Blog-RN to access your photos.",
+        "NSPhotoLibraryAddUsageDescription": "Allow Blog-RN to save photos."
+      }
     },
     "android": {
-      "config":{
-        "googleMaps":{
-          "apiKey": "${{ secrets.API }}"
-        }
-      },
       "package": "com.blog.test",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "config":{
+        "googleMaps":{
+          "apiKey": "AIzaSyCj-nyOn08gX9SpMyHG6pD4BEZsAQeKq9k"
+        }
+      },
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "70158a4f-4ffc-4dcd-adee-ba421cf6f304"
+      }
     }
   }
 }
